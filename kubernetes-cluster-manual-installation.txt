@@ -1,0 +1,150 @@
+==================== KUBERNETES CLUSTER INSTALLATION on UBUNTU 22.04 ================================
+
+sudo apt update && sudo apt upgrade -y
+
+sudo hostnamectl set-hostname "k8s-master.local"
+
+sudo apt install nano
+
+sudo nano /etc/hosts
+# K8s cluster nodes
+192.168.174.131  k8s-master.local k8s-master
+192.168.174.135  k8s-worker.local k8s-worker
+	
+sudo swapoff -a
+free -h
+
+sudo nano /etc/fstab
+      #/swapfile                                 none            swap    sw              0       0
+	
+sudo mount -a
+free -h    
+      Swap:             0B          0B          0B
+	
+sudo tee /etc/modules-load.d/containerd.conf <<EOF
+overlay
+br_netfilter
+EOF
+
+sudo modprobe overlay && sudo modprobe br_netfilter
+
+sudo tee /etc/sysctl.d/kubernetes.conf <<EOF
+net.bridge.bridge-nf-call-ip6tables = 1
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+EOF
+
+sudo sysctl --system
+
+sudo apt install -y curl gnupg2 software-properties-common apt-transport-https ca-certificates
+
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmour -o /etc/apt/trusted.gpg.d/docker.gpg
+
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+
+sudo apt update
+
+sudo apt install -y containerd.io
+
+containerd config default | sudo tee /etc/containerd/config.toml >/dev/null 2>&1
+
+sudo sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
+
+sudo systemctl restart containerd
+
+sudo systemctl enable containerd
+
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+
+sudo apt-add-repository "deb http://apt.kubernetes.io/ kubernetes-xenial main"
+
+sudo apt update
+
+sudo apt install -y kubelet kubeadm kubectl
+
+sudo apt-mark hold kubelet kubeadm kubectl
+
+# ONLY ON MASTER NODE run the following
+sudo kubeadm init --pod-network-cidr=10.10.0.0/16 --control-plane-endpoint=k8s-master.local
+
+curl https://raw.githubusercontent.com/projectcalico/calico/v3.25.0/manifests/calico.yaml -O
+
+sudo nano calico.yaml 
+       #find CALICO_IPV4POOL_CIDR
+	   - name: CALICO_IPV4POOL_CIDR
+         value: "10.10.0.0/16"
+		 
+kubectl apply -f calico.yaml
+
+# untaint it to be able to deploy pods on 'control-plane' node
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+================================= microk8s setup ===========================================
+
+sudo snap install microk8s --classic --channel=1.29
+
+sudo usermod -a -G microk8s $USER
+sudo chown -f -R $USER ~/.kube
+su - $USER
+
+alias kubectl='microk8s kubectl'
+
+microk8s start
+microk8s stop
+microk8s status --wait-ready
+
+microk8s enable metrics-server
+microk8s enable hostpath-storage
+
+/var/snap/microk8s/current/credentials/client.config
+
+================================= usefull commands =========================================
+
+kubeadm token create --print-join-command
+
+kubectl get --raw='/readyz?verbose'
+
+kubectl apply -f metrics-server.yaml
+
+sudo apt install openjdk-17-jdk
+
+kubectl top [nodes, pods] -A
+
+# Port Forwarding
+ssh -L <local_port>:<remote_host>:<remote_port> <username>@<remote_host>
+ssh -R <remote_port>:<local_machine>:<local_port> <username>@<remote_host>
+
+========================== metrics-server setup ============================================
+
+curl https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/high-availability-1.21+.yaml
+
+nano components.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+spec:
+    spec:
+      hostNetwork: true
+      containers:
+      - args:
+        - --cert-dir=/tmp
+        - --secure-port=9443              # !!!
+        - --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+        - --kubelet-use-node-status-port
+        - --metric-resolution=15s
+        - --kubelet-insecure-tls          # !!!
+        image: registry.k8s.io/metrics-server/metrics-server:v0.7.0
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /livez
+            port: https
+            scheme: HTTPS
+          periodSeconds: 10
+        name: metrics-server
+        ports:
+        - containerPort: 9443             # !!!
+          name: https
+          protocol: TCP
+

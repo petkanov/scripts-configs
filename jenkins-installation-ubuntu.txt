@@ -1,0 +1,86 @@
+# install java
+sudo apt install openjdk-17-jre-headless
+
+# install jenkins
+sudo wget -O /usr/share/keyrings/jenkins-keyring.asc \
+  https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+  https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+  /etc/apt/sources.list.d/jenkins.list > /dev/null
+sudo apt-get update
+sudo apt-get install jenkins 
+
+# if this fails
+sudo su - jenkins -c 'docker run hello-world'
+# then run
+sudo groupadd docker
+sudo usermod -aG docker jenkins
+newgrp docker
+sudo systemctl restart jenkins
+
+groups jenkins
+# should return "jenkins : jenkins docker"
+
+========================================== jenkins pipeline ==================================
+
+pipeline {
+    agent any
+    tools {
+        jdk 'jdk17'
+        maven 'maven3.6'
+    }
+    environment {
+        SCANNER_HOME= tool 'sonar-scanner'
+    }
+
+    stages {
+        stage('Git checkout') {
+            steps {
+                git changelog: false, credentialsId: '8a0b6e89-bc8e-47fe-aed8-4dec97769d70', poll: false, url: 'https://github.com/petkanov/java-application.git'
+            }
+        }
+        
+        stage('Compile') {
+            steps {
+                sh "mvn clean compile"
+            }
+        }
+        
+        stage('OWASP Scan') {
+            steps {
+                dependencyCheck additionalArguments: '--scan ./', odcInstallation: 'Dependency Check'
+                dependencyCheckPublisher pattern: '**/dependency-check-report.xml'
+            }
+        }
+        
+        stage('SonarQube') {
+            steps {
+				withSonarQubeEnv('MySonarQube') {
+					sh ''' $SCANNER_HOME/bin/sonar-scanner -Dsonar.projectName=java-application \
+					-Dsonar.java.binaries=. \
+					-Dsonar.projectKey=java-application '''
+				}
+			}
+        }
+        
+        stage('Build') {
+            steps {
+				sh "mvn clean package"
+			}
+        }
+        
+        stage('Docker Build & Push') {
+            steps {
+                script {
+                    withDockerRegistry(credentialsId: '9c48b8bc-f9d3-4c92-9715-e45ab9991c02', toolName: 'docker') {
+                        sh "docker build -t java-application -f docker/Dockerfile ."
+                        sh "docker tag java-application ppetkanov/java-application:latest"
+                        sh "docker push ppetkanov/java-application:latest"
+                    }
+                }
+            }
+        }
+    }
+}
+
+=======================================================================================================

@@ -1,0 +1,90 @@
+minikube [start/stop/delete]
+minikube start --extra-config=kubelet.housekeeping-interval=10s
+minikube start --memory 5000 --cpus 2
+
+minikube tunnel
+
+minikube addons list
+minikube dashboard
+minikube addons enable ingress
+minikube addons enable metrics-server
+
+# ssh into kubernates worker node
+minikube ssh
+# if we run docker desktop, to ssh into worker node, use:
+docker run -it --rm --privileged --pid=host justincormack/nsenter1
+
+kubectl [apply/delete] -f .\devops-blue.yml
+
+kubectl get namespace
+kubectl get [pod/deplyment/service/configmap/hpa/pv/pvc] -n [NAMESPACE_NAME] -o [wide/json]
+
+kubectl describe [pod/deplyment/service] -n devops
+kubectl logs -n [NAMESPACE_NAME] [POD_NAME]
+
+kubectl get pod -n devops
+kubectl exec -n [NAMESPACE_NAME] [POD_NAME] -c devops-blue -ti bash
+kubectl exec -n [NAMESPACE_NAME] [POD_NAME] -c alpine-linux -ti /bin/sh
+kubectl port-forward -n [NAMESPACE_NAME] [POD_NAME] [OUTSIDE_PORT]:[CONTAINER_PORT]
+kubectl port-forward --address 0.0.0.0 my-nginx-pod 5000:80
+kubectl port-forward --address 0.0.0.0 svc/my-jenkins 5000:80 &
+
+# create and download from https://regery.com/en/security/ssl-tools/self-signed-certificate-generator , run in the Download/ folder
+kubectl create secret tls api-devops-local-cert -n devops --key api-devops.local-privateKey.key  --cert api-devops.local.crt
+
+kubectl rollout restart deployment [DEPLOYMENT_NAME] -n [NAMESPACE_NAME]
+kubectl delete deployment [DEPLOYMENT_NAME]
+kubectl config set-context --current -n [NAMESPACE_NAME]
+kubectl port-forward svc/my-jenkins 8080:8080 -n [NAMESPACE_NAME]
+kubectl top pod -A
+
+kubectl exec -n default -it svc/my-jenkins -c jenkins -- /bin/cat /run/secrets/additional/chart-admin-password
+
+helm install my-ingress-nginx ingress-nginx/ingress-nginx --version 4.7.1 -n ingress --create-namespace
+helm upgrade --install my-ingress-nginx ingress-nginx --repo https://kubernetes.github.io/ingress-nginx --values values-ingress-nginx.yml
+helm get values [RELEASE_NAME] -n [NAMESPACE_NAME]
+
+helm upgrade --install kube-prometheus-stack kube-prometheus-stack --repo https://prometheus-community.github.io/helm-charts -n monitoring --create-namespace --values values-kube-prometheus.yml
+helm get values my-kube-prometheus-stack -n monitoring
+
+helm upgrade --install my-rabbitmq rabbitmq --repo https://charts.bitnami.com/bitnami -n rabbitmq --create-namespace --values values-rabbitmq.yml
+
+# github token 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
+helm upgrade --install my-argocd argo-cd --repo https://argoproj.github.io/argo-helm -n argocd --create-namespace --values values-argocd.yml
+
+helm upgrade --install istio-base base --repo https://istio-release.storage.googleapis.com/charts -n istio-system --create-namespace
+helm upgrade --install istiod istiod --repo https://istio-release.storage.googleapis.com/charts -n istio-system --create-namespace
+helm upgrade --install kiali-server kiali-server --repo https://kiali.org/helm-charts -n istio-system --create-namespace --values values-kiali-server.yml
+
+helm delete [RELEASE_NAME]
+helm uninstall [RELEASE_NAME] -n [NAMESPACE_NAME]
+
+# show all releases
+helm list -A
+
+# This is to visualize chart configurations before creating actual chart release in k8s
+# shoud be executed from folder where custom "spring-boot-rest-api" template is placed
+helm template helm-yellow-01 spring-boot-rest-api -n devops --create-namespace --values C:\Full-Path\values-spring-boot.yml --output-dir c:\bla-bla
+
+# to test if generated yaml structure is correct (simulation purpose)
+kubectl apply --dry-run=client -f .\deployment.yaml
+
+# execute this from parent folder of "spring-boot-rest-api" chart data folder
+helm upgrade --install helm-yellow-01 spring-boot-rest-api --values D:\Full-Path\values-spring-boot.yml -n [NAMESPACE_NAME]
+# or
+helm template helm-yellow-01 spring-boot-rest-api --values D:\COURSE\Udemy-PracticalDevopsKubernetesAndIstioWithGoogleCloud\26-ResourcesAndReferences\kubernetes-istio-scripts\kubernetes\helm-spring-boot-rest-api-01\values-spring-boot.yml -n devops --create-namespace --output-dir D:\output-dir-folder
+
+# create release from github repo, run from yml values file's folder
+helm upgrade --install helm-blue-github spring-boot-rest-api --repo https://petkanov.github.io/devops-helm-charts/ --version 0.1.0 --values values.yml --values values-dev.yml -n devops --create-namespace
+
+# run from chart-with-dependencies folder that has Chart.yaml
+helm dependency update
+
+# then cd .. into folder with values yaml files
+helm upgrade --install helm-blue-04 chart-with-dependencies --values values.yml --values values-dev.yml -n devops --create-namespace
+
+
+
+sudo du -h --max-depth=1 /var
+sudo find / -type f -size +100M -exec ls -lh {} \;
+
