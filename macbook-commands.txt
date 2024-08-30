@@ -1,0 +1,9 @@
+
+multipass launch --name my-vm
+multipass list
+multipass shell my-vm
+multipass stop my-vm
+multipass delete my-vm
+    multipass purge
+# Mount a directory
+multipass mount ~/my-folder my-vm:/home/ubuntu/my-folder

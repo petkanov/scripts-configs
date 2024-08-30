@@ -14,6 +14,20 @@ minikube ssh
 # if we run docker desktop, to ssh into worker node, use:
 docker run -it --rm --privileged --pid=host justincormack/nsenter1
 
+
+######      for MacBook  ######################
+nano ~/.zshrc
+    alias kubectl='microk8s kubectl'
+source ~/.zshrc
+alias
+
+multipass list
+multipass shell microk8s-vm
+ifconfig
+sudo cat /var/snap/microk8s/current/credentials/client.config
+###############################################
+
+
 kubectl [apply/delete] -f .\devops-blue.yml
 
 kubectl get namespace
