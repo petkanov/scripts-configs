@@ -1,0 +1,11 @@
+# create project folder, open CMD(not powershell) in it, then
+conda create -p venv python==3.12 
+conda activate venv/
+
+# another way to create environement
+python -m venv myenv
+myenv/Scripts/activate
+deactivate
+
+pip install -r requirements.txt
+
