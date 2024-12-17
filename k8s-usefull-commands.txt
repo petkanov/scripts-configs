@@ -9,6 +9,11 @@ minikube dashboard
 minikube addons enable ingress
 minikube addons enable metrics-server
 
+#### Point to minikube's own docker demon
+eval $(minikube docker-env)
+#### Point back to original OS docker demon
+eval $(minikube docker-env -u)
+
 # ssh into kubernates worker node
 minikube ssh
 # if we run docker desktop, to ssh into worker node, use:
