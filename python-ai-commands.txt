@@ -7,5 +7,9 @@ python -m venv myenv
 myenv/Scripts/activate
 deactivate
 
+# create file "requirements.txt" and add this line into it:
+ipykernel
+numpy
+# then run:
 pip install -r requirements.txt
 
