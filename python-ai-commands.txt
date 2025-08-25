@@ -3,6 +3,8 @@
 #this will create environment folder with name = (name from environment.yml) in anaconda installation directory
 conda env create -f environment.yml
 conda activate [name from environment.yml]
+conda info --envs
+conda deactivate  
 
 #this will create environment folder venv/ in the same directory where CMD points to
 conda create -p venv python==3.12 
