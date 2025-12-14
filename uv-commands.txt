@@ -1,0 +1,55 @@
+#   Create new project in folder "myapp"
+uv init myapp
+
+#   Optional – nuke interpreter lock
+rm myapp/.python-version
+
+#   Install deps from pyproject.toml + uv.lock
+uv sync
+
+#   CD into myapp folder and run something inside the project env
+uv run python
+uv run python main.py
+uv run pytest
+
+#   Add runtime dependency, adds a project dependency, updates pyproject.toml
+uv add fastapi
+
+#   Add dev-only dependency
+uv add --dev pytest
+#   Installs into the environment, BUT does NOT update project config pyproject.toml
+uv pip install <something>
+
+#   Remove dependency
+uv remove fastapi
+
+#   Build wheel + sdist
+uv build
+#   produces:
+#   dist/
+#       myservice-0.1.0-py3-none-any.whl
+
+#   Install project into current env (like `pip install -e .`)
+uv sync --all-extras
+
+
+#   List UV-managed Python versions (globaly installed in UV installation folder)
+uv python list
+
+#    Install a specific Python version
+#    You don't need to do this if the .python-version file specifies that version
+#    UV will use the version specified in .python-version file (3.10) and install it if it's not installed
+uv python install 3.10
+
+#   Remove a Python version
+uv python uninstall 3.10
+
+#   Show cache info
+uv cache dir
+uv cache stats
+
+#   Clear cache
+uv cache clean
+
+#   Update UV itself
+uv self update
